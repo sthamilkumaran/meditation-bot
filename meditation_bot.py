@@ -1,8 +1,16 @@
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
+import os
 import random
 
-TOKEN = "7662191809:AAEYYIqGgMgZzULnz8nbuv9lwHbi4Fclq0w"
+from dotenv import load_dotenv
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import (
+    Application, CommandHandler, CallbackQueryHandler,
+    MessageHandler, ContextTypes, filters
+)
+
+# Load BOT_TOKEN from .env file
+load_dotenv()
+TOKEN = os.getenv("BOT_TOKEN")
 
 meditations = {
     "Relaxation": [
@@ -27,19 +35,42 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton(theme, callback_data=theme) for theme in meditations.keys()]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.message.reply_text("🧘 Welcome to Meditation Bot!\n\nChoose a theme to begin:", reply_markup=reply_markup)
+    await update.message.reply_text(
+        "🧘 Welcome to Meditation Bot!\n\nChoose a theme to begin:",
+        reply_markup=reply_markup
+    )
+
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        "🙏 How to use Meditation Bot:\n"
+        "- /start → Choose a meditation theme.\n"
+        "- Click a theme button → Get a random meditation exercise.\n"
+        "- You can come back anytime when you need a mindful break. 🌸"
+    )
 
 async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     theme = query.data
     exercise = random.choice(meditations[theme])
-    await query.edit_message_text(f"🌸 *{theme} Meditation:*\n\n{exercise}", parse_mode='Markdown')
+    await query.edit_message_text(
+        f"🌸 *{theme} Meditation:*\n\n{exercise}",
+        parse_mode='Markdown'
+    )
+
+async def unknown(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        "😕 Sorry, I didn’t understand that command. Try /start or /help."
+    )
 
 def main():
     app = Application.builder().token(TOKEN).build()
+
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("help", help_command))
     app.add_handler(CallbackQueryHandler(button))
+    app.add_handler(MessageHandler(filters.COMMAND, unknown))
+
     print("Bot is running…")
     app.run_polling()
 
